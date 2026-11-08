@@ -32,7 +32,9 @@ enum class AppViewMode {
     TERMINAL,
     BROWSER,
     NOTES,
-    FILES
+    FILES,
+    VISION,
+    SWARM
 }
 
 class MainActivity : ComponentActivity() {
@@ -102,6 +104,8 @@ class MainActivity : ComponentActivity() {
                     "BROWSER" -> AppViewMode.BROWSER
                     "NOTES" -> AppViewMode.NOTES
                     "FILES" -> AppViewMode.FILES
+                    "VISION" -> AppViewMode.VISION
+                    "SWARM" -> AppViewMode.SWARM
                     else -> AppViewMode.CHAT
                 }
             }
@@ -139,6 +143,16 @@ class MainActivity : ComponentActivity() {
                         "FILES" -> {
                             previousViewMode = currentViewMode
                             currentViewMode = AppViewMode.FILES
+                        }
+
+                        "VISION" -> {
+                            previousViewMode = currentViewMode
+                            currentViewMode = AppViewMode.VISION
+                        }
+
+                        "SWARM" -> {
+                            previousViewMode = currentViewMode
+                            currentViewMode = AppViewMode.SWARM
                         }
                     }
                     chatViewModel.consumeRequestedViewMode()
@@ -443,6 +457,48 @@ class MainActivity : ComponentActivity() {
                                                 chatViewModel.onProjectChanged(proj.path)
                                                 previousViewMode = currentViewMode
                                                 currentViewMode = AppViewMode.IDE
+                                            }
+                                        )
+                                    }
+                                }
+
+                                // Autonomous Screen Vision Agent Screen
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer {
+                                            val isVisible = currentViewMode == AppViewMode.VISION
+                                            alpha = if (isVisible) 1f else 0f
+                                            translationX = if (isVisible) 0f else 20000f
+                                        }
+                                ) {
+                                    if (currentViewMode == AppViewMode.VISION) {
+                                        com.example.gemini.ui.vision.ScreenVisionPanel(
+                                            agent = chatViewModel.screenVisionAgent,
+                                            onClose = {
+                                                currentViewMode =
+                                                    if (previousViewMode == AppViewMode.VISION) AppViewMode.CHAT else previousViewMode
+                                            }
+                                        )
+                                    }
+                                }
+
+                                // Multi-Agent Swarm Coordinator Screen
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer {
+                                            val isVisible = currentViewMode == AppViewMode.SWARM
+                                            alpha = if (isVisible) 1f else 0f
+                                            translationX = if (isVisible) 0f else 20000f
+                                        }
+                                ) {
+                                    if (currentViewMode == AppViewMode.SWARM) {
+                                        com.example.gemini.ui.swarm.SwarmCoordinatorPanel(
+                                            coordinator = chatViewModel.swarmCoordinator,
+                                            onClose = {
+                                                currentViewMode =
+                                                    if (previousViewMode == AppViewMode.SWARM) AppViewMode.CHAT else previousViewMode
                                             }
                                         )
                                     }

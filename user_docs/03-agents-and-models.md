@@ -180,3 +180,36 @@ Claude Code uses dynamic in-chat approval cards rather than abstract mode names:
   1. `localhost` inside Termux/Android refers to the phone itself, not your PC. Use your computer's local Wi-Fi IP address (e.g. `http://192.168.1.50:11434/v1`).
   2. Make sure `/v1` is included at the end of the URL.
   3. Ensure Ollama is configured to listen on all interfaces (`OLLAMA_HOST=0.0.0.0`) on your computer.
+
+---
+
+## 👁️ 6. Autonomous Screen Vision Agent
+
+The **Autonomous Screen Vision Agent** enables AntiGem to visually inspect the Android screen, formulate autonomous multi-step plans, and interact physically with apps using **Gemini Flash multimodal vision** and Android Accessibility Automation.
+
+### Key Capabilities:
+- **Perception-Action Loop**: Continuously captures screenshots, analyzes interactive UI elements, and decides on actions (`TAP`, `TYPE_TEXT`, `SCROLL`, `SWIPE`, `PRESS_KEY`, `LAUNCH_APP`).
+- **Target Coordinate Grounding**: Pinpoints exact screen coordinates or UI element IDs (`e0`, `e1`, ...).
+- **Interactive HUD & Panel**: View live screen thumbnails, target crosshairs, and step-by-step action history via `ScreenVisionPanel`.
+- **Safety Guard**: Automatic safety guard preventing accidental transactions, password exposure, or destructive actions without explicit user confirmation.
+- **Slash Command**: Run `/vision <goal>` in any chat to trigger the Screen Vision Agent.
+
+---
+
+## 🐝 7. Multi-Agent Swarm Coordinator
+
+The **Multi-Agent Swarm Coordinator** orchestrates teams of specialized autonomous agents collaborating concurrently on complex software engineering tasks.
+
+### Specialized Agent Roles:
+1. **System Architect (`ARCHITECT`)**: Decomposes high-level coding goals into a Directed Acyclic Graph (DAG) of interdependent tasks and specifies API contracts.
+2. **Core Software Engineer (`CODER`)**: Concurrently implements components, refactors code, and handles algorithms.
+3. **Code Reviewer (`REVIEWER`)**: Audits diffs, checks edge cases, verifies security, and ensures architectural consistency.
+4. **Test & Runtime Verification (`TESTER_EXECUTOR`)**: Runs automated test suites and verifies builds via the Termux terminal bridge.
+5. **Technical Writer & Release (`DOCS_RELEASE`)**: Generates comprehensive user documentation, changelog entries, and git commit messages.
+
+### Key Features:
+- **Dependency-Aware DAG Scheduler**: Dispatches tasks in parallel as soon as their prerequisite dependencies complete.
+- **Shared Blackboard & Message Bus**: Facilitates real-time agent-to-agent communication, artifact sharing, and collective knowledge synthesis.
+- **Interactive Task Board**: Real-time visualization of task statuses (`PENDING`, `READY`, `RUNNING`, `DONE`), progress percentage, and worker activity.
+- **Slash Command**: Run `/swarm <task>` to initiate parallel multi-agent swarm execution.
+

@@ -196,6 +196,16 @@ object AndroidAutomation {
             "command" to prop("string", "Shell command"),
             "timeout_seconds" to prop("integer", "Default 30, max 300")
         ))
+        put(tool("android_vision_agent_start", "Start autonomous screen vision agent using Gemini Flash vision to perceive screen and execute goal", listOf("goal"),
+            "goal" to prop("string", "User goal to execute on screen"),
+            "max_steps" to prop("integer", "Maximum steps, default 25")
+        ))
+        put(tool("android_vision_agent_status", "Get current status, step history and outcome of the autonomous screen vision agent"))
+        put(tool("swarm_start_coordination", "Launch a multi-agent swarm (Architect, Coder, Reviewer, Tester, Docs) collaborating in parallel on a task", listOf("goal"),
+            "goal" to prop("string", "High-level coding or refactoring task"),
+            "workspace" to prop("string", "Workspace path, optional")
+        ))
+        put(tool("swarm_get_status", "Get live progress, DAG task statuses, and completed artifacts of the multi-agent swarm"))
     }
 
     // ---------------- results ----------------
@@ -248,6 +258,51 @@ object AndroidAutomation {
                     val result = AdbConnectManager.deviceShell(d, args.getString("command"), seconds)
                     val out = result.output.ifBlank { "(no output)" }.let { if (it.length > 60_000) it.take(60_000) + "\n…(truncated)" else it }
                     if (result.exitCode == 0) text(out) else error("Exit code ${result.exitCode}\n$out")
+                }
+                "android_vision_agent_start" -> {
+                    val goal = args.getString("goal")
+                    val maxSteps = args.optInt("max_steps", 25)
+                    val agent = com.example.gemini.data.agent.vision.ScreenVisionAgent.getInstance(context)
+                    agent.startGoal(goal, maxSteps)
+                    text("Launched Screen Vision Agent with goal: '$goal' (max steps: $maxSteps)")
+                }
+                "android_vision_agent_status" -> {
+                    val agent = com.example.gemini.data.agent.vision.ScreenVisionAgent.getInstance(context)
+                    val sess = agent.session.value
+                    text(JSONObject().apply {
+                        put("status", sess.status.name)
+                        put("goal", sess.goal)
+                        put("currentStep", sess.currentStep)
+                        put("maxSteps", sess.maxSteps)
+                        put("error", sess.error ?: JSONObject.NULL)
+                        put("stepsCount", sess.steps.size)
+                        sess.steps.lastOrNull()?.let { last ->
+                            put("lastThought", last.thought)
+                            put("lastAction", last.action.type.name)
+                            put("lastOutcome", last.resultMessage)
+                        }
+                    }.toString(2))
+                }
+                "swarm_start_coordination" -> {
+                    val goal = args.getString("goal")
+                    val ws = args.optString("workspace", "")
+                    val swarm = com.example.gemini.data.agent.swarm.SwarmCoordinator.getInstance(context)
+                    swarm.startSwarm(goal, ws)
+                    text("Multi-Agent Swarm started with ${swarm.dag.tasks.value.size} DAG tasks for goal: '$goal'")
+                }
+                "swarm_get_status" -> {
+                    val swarm = com.example.gemini.data.agent.swarm.SwarmCoordinator.getInstance(context)
+                    val sess = swarm.session.value
+                    text(JSONObject().apply {
+                        put("isRunning", sess.isRunning)
+                        put("isPaused", sess.isPaused)
+                        put("progress", "%.1f%%".format(sess.progress * 100))
+                        put("goal", sess.goal)
+                        put("tasksCount", sess.tasks.size)
+                        put("completedTasks", sess.tasks.count { it.status == com.example.gemini.data.agent.swarm.SwarmTaskStatus.DONE })
+                        put("summaryReport", sess.summaryReport ?: JSONObject.NULL)
+                        put("error", sess.error ?: JSONObject.NULL)
+                    }.toString(2))
                 }
                 else -> error("Unknown tool $name")
             }

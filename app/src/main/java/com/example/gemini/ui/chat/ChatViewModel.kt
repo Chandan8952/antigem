@@ -78,6 +78,18 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     val openCodePrefs = com.example.gemini.data.agent.opencode.OpenCodePreferences(application)
     val openCodeBackend = com.example.gemini.data.agent.opencode.OpenCodeChatBackend(application, viewModelScope, store, openCodePrefs)
 
+    /** Autonomous Screen Vision Agent: drives Android apps with Gemini Flash vision and accessibility actions. */
+    val screenVisionAgent: com.example.gemini.data.agent.vision.ScreenVisionAgent =
+        com.example.gemini.data.agent.vision.ScreenVisionAgent.getInstance(application).apply {
+            oauthTokenProvider = { authPreferences.accessToken.firstOrNull() }
+        }
+
+    /** Multi-Agent Swarm Coordinator: coordinates parallel specialized agent teams across a task DAG. */
+    val swarmCoordinator: com.example.gemini.data.agent.swarm.SwarmCoordinator =
+        com.example.gemini.data.agent.swarm.SwarmCoordinator.getInstance(application).apply {
+            workerPool.authTokenProvider = { authPreferences.accessToken.firstOrNull() }
+        }
+
     /** Agent of the conversation on screen; chat actions go to that agent's backend. */
     val activeAgent: StateFlow<AgentKind> = store.currentConversation
         .map { it?.agent ?: AgentKind.AGY }

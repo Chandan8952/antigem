@@ -78,6 +78,22 @@ object CustomSlashCommands {
                 5. Ask the user before anything destructive or outward-facing: uninstalling apps, deleting data, sending messages or emails, calls, payments, or changing security settings.
                 6. Finish with what you did and the state the phone is in now.
             """.trimIndent()
+        ),
+        CustomSlashCommand(
+            name = "vision",
+            description = "Launch Autonomous Screen Vision Agent with Gemini Flash vision to see the screen and control apps",
+            expansion = """
+                The user wants to use the Autonomous Screen Vision Agent to perform a task directly on their Android screen: ${'$'}ARGUMENTS
+                If arguments are provided, trigger the Autonomous Screen Vision Agent to observe the screen, locate relevant buttons/inputs using Gemini Flash vision, and execute physical touch/scroll/type actions through Android Automation until the goal is achieved.
+            """.trimIndent()
+        ),
+        CustomSlashCommand(
+            name = "swarm",
+            description = "Coordinate a multi-agent swarm (Architect, Coder, Reviewer, Tester, Docs) in parallel on coding tasks",
+            expansion = """
+                The user wants to coordinate a Multi-Agent Swarm for this coding/execution task: ${'$'}ARGUMENTS
+                Break down the objective into a dependency DAG and dispatch specialized agents (Architect, Coder, Reviewer, Tester, Docs) to collaborate concurrently with shared memory and runtime verification.
+            """.trimIndent()
         )
     )
 
