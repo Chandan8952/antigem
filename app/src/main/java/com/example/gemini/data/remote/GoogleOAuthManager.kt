@@ -342,7 +342,8 @@ class GoogleOAuthManager(private val client: OkHttpClient = OkHttpClient()) {
         val access_token: String,
         val refresh_token: String? = null,
         val expires_in: Long? = null,
-        val token_type: String? = null
+        val token_type: String? = null,
+        val id_token: String? = null
     )
 
     @Serializable

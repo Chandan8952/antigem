@@ -694,7 +694,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handleOAuthIntent(intent: Intent?) {
         val uri = intent?.data ?: return
-        if (uri.scheme == "http" || uri.scheme == "https" || uri.scheme == "gemini") {
+        if (uri.scheme == "antigem" || uri.scheme == "gemini" || uri.scheme == "http" || uri.scheme == "https") {
             val code = uri.getQueryParameter("code")
             if (code != null) {
                 chatViewModel.handleOAuthCode(code)

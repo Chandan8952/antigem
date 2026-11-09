@@ -557,6 +557,49 @@ class AuthPreferences(private val context: Context) {
                 prefs[EXPIRES_AT] = System.currentTimeMillis() + (expiresInSeconds * 1000)
             }
         }
+
+        try {
+            val expiryIso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
+                timeZone = java.util.TimeZone.getTimeZone("UTC")
+            }.format(java.util.Date(System.currentTimeMillis() + ((expiresInSeconds ?: 3600) * 1000)))
+
+            val tokenObj = org.json.JSONObject().apply {
+                put("access_token", accessToken)
+                put("token_type", "Bearer")
+                put("refresh_token", refreshToken ?: "")
+                put("expiry", expiryIso)
+            }
+            val rootObj = org.json.JSONObject().apply {
+                put("token", tokenObj)
+                put("auth_method", "consumer")
+                if (email != null) put("user_email", email)
+            }
+            val tokenJsonStr = rootObj.toString(2)
+
+            val targetDirs = mutableListOf<java.io.File>()
+            if (com.example.gemini.data.local.LocalEnvironmentManager.isTermuxPackage(context)) {
+                targetDirs.add(java.io.File(com.example.gemini.data.local.LocalEnvironmentManager.getHomeDir(context), ".gemini"))
+            } else {
+                val ubuntuDir = com.example.gemini.data.local.LocalEnvironmentManager.getUbuntuRootDir(context)
+                targetDirs.add(java.io.File(java.io.File(ubuntuDir, "root"), ".gemini"))
+                targetDirs.add(java.io.File(java.io.File(context.filesDir, "home"), ".gemini"))
+            }
+
+            for (dir in targetDirs) {
+                dir.mkdirs()
+                val f = java.io.File(dir, "jetski-standalone-oauth-token")
+                f.writeText(tokenJsonStr)
+                android.util.Log.i("AuthPreferences", "Persisted jetski-standalone-oauth-token to ${f.absolutePath}")
+            }
+
+            try {
+                val dlDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+                val dlFile = java.io.File(dlDir, "jetski-standalone-oauth-token")
+                dlFile.writeText(tokenJsonStr)
+            } catch (_: Exception) {}
+        } catch (e: Exception) {
+            android.util.Log.w("AuthPreferences", "Failed writing jetski-standalone-oauth-token: ${e.message}")
+        }
     }
 
     suspend fun saveProjectInfo(projectId: String, tier: String) {
