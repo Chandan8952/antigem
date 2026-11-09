@@ -536,6 +536,7 @@ fun NewChatCheckingAuthPromptCard(
 fun ServerStoppedPromptCard(
     modifier: Modifier = Modifier
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -545,16 +546,19 @@ fun ServerStoppedPromptCard(
     ) {
         Box(
             modifier = Modifier
-                .size(60.dp)
+                .size(64.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                .clickable {
+                    com.example.gemini.data.local.LocalServerManager.startServer(context, forceRestart = true)
+                },
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Outlined.PowerSettingsNew,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-                modifier = Modifier.size(28.dp)
+                contentDescription = "Start Server",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
             )
         }
 
@@ -571,12 +575,26 @@ fun ServerStoppedPromptCard(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "The local AI engine is currently stopped. Tap the status dot in the top header to start, restart, or stop the server and inspect live logs.",
+            text = "Tap the button below or the power icon above to start the local AI engine.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
             textAlign = TextAlign.Center,
             lineHeight = 20.sp
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                com.example.gemini.data.local.LocalServerManager.startServer(context, forceRestart = true)
+            },
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Start Server", fontWeight = FontWeight.Medium)
+        }
     }
 }
 

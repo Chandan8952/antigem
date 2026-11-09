@@ -910,96 +910,130 @@ object LocalEnvironmentManager {
             when (source) {
                 is BootstrapSource.Auto -> {
                     val isTermux = isTermuxPackage(appContext)
-                    val targetUrl = if (isTermux) HARDCODED_ROOTFS_URL else UBUNTU_ROOTFS_URL
                     val targetAsset = if (isTermux) HARDCODED_ROOTFS_ASSET else UBUNTU_ROOTFS_ASSET
-                    val targetSizeBytes = if (isTermux) HARDCODED_ROOTFS_SIZE_BYTES else UBUNTU_ROOTFS_SIZE_BYTES
                     val titlePrefix = if (isTermux) "AntiGem Rootfs" else "Ubuntu Rootfs"
 
-                    _installerState.value = LocalInstallerState.Downloading(
-                        bytesDownloaded = 0L,
-                        totalBytes = targetSizeBytes,
-                        progressFraction = 0.02f,
-                        speedText = "Connecting...",
-                        currentPackageName = targetAsset
+                    // 1. Check if a pre-downloaded rootfs archive already exists in storage or downloads
+                    val localCandidates = listOf(
+                        File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "ubuntu-questing-aarch64-pd-v4.30.1.tar.xz"),
+                        File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "ubuntu-rootfs.tar.xz"),
+                        File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "bootrapz_2026-10-04.zip"),
+                        File(appContext.getExternalFilesDir(null), "ubuntu-questing-aarch64-pd-v4.30.1.tar.xz"),
+                        File(appContext.cacheDir, "ubuntu-questing-aarch64-pd-v4.30.1.tar.xz")
                     )
-                    updateInstallNotification(appContext, "Downloading $titlePrefix", "Connecting...", -1)
+                    val localArchive = localCandidates.firstOrNull { it.exists() && it.length() > 5_000_000L }
 
-                    try {
-                        val request = Request.Builder()
-                            .url(targetUrl)
-                            .header("User-Agent", "GeminiApp-LocalTerminal/${Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64"}")
-                            .build()
+                    if (localArchive != null) {
+                        log("Found pre-downloaded local archive: ${localArchive.absolutePath} (${formatFileSize(localArchive.length())})")
+                        updateInstallNotification(appContext, "Installing Linux Rootfs", "Verifying pre-downloaded archive...", 10)
+                        localArchive.copyTo(tempZipFile, overwrite = true)
+                        if (tempZipFile.length() >= MIN_BOOTSTRAP_SIZE_BYTES && validateArchiveIntegrity(tempZipFile)) {
+                            downloadSucceeded = true
+                            finalDownloadedSize = tempZipFile.length()
+                        }
+                    }
 
-                        httpClient.newCall(request).execute().use { response ->
-                            if (!response.isSuccessful) {
-                                val errorMsg = "Download failed: HTTP ${response.code} from release server."
-                                updateInstallNotification(appContext, "Installation Failed", errorMsg, -2, ongoing = false, force = true)
-                                _installerState.value = LocalInstallerState.Error(errorMessage = errorMsg, canRetry = true)
-                                return@withContext false
-                            }
+                    // 2. If no local archive, download with multi-mirror resilience & standard browser User-Agent
+                    if (!downloadSucceeded) {
+                        val candidateUrls = if (isTermux) {
+                            listOf(
+                                HARDCODED_ROOTFS_URL,
+                                "https://ghproxy.net/$HARDCODED_ROOTFS_URL",
+                                "https://mirror.ghproxy.com/$HARDCODED_ROOTFS_URL"
+                            )
+                        } else {
+                            listOf(
+                                "https://github.com/Chandan8952/antigem/releases/download/v1.1.3/ubuntu-questing-aarch64-pd-v4.30.1.tar.xz",
+                                UBUNTU_ROOTFS_URL,
+                                "https://ghproxy.net/$UBUNTU_ROOTFS_URL",
+                                "https://mirror.ghproxy.com/$UBUNTU_ROOTFS_URL"
+                            )
+                        }
 
-                            val body = response.body
-                            if (body == null) {
-                                val errorMsg = "Download failed: Empty response body."
-                                updateInstallNotification(appContext, "Installation Failed", errorMsg, -2, ongoing = false, force = true)
-                                _installerState.value = LocalInstallerState.Error(errorMessage = errorMsg, canRetry = true)
-                                return@withContext false
-                            }
+                        var lastError = "Download failed."
+                        for (targetUrl in candidateUrls) {
+                            try {
+                                log("Attempting rootfs download from: $targetUrl")
+                                val targetSizeBytes = if (isTermux) HARDCODED_ROOTFS_SIZE_BYTES else UBUNTU_ROOTFS_SIZE_BYTES
+                                _installerState.value = LocalInstallerState.Downloading(
+                                    bytesDownloaded = 0L,
+                                    totalBytes = targetSizeBytes,
+                                    progressFraction = 0.02f,
+                                    speedText = "Connecting...",
+                                    currentPackageName = targetAsset
+                                )
+                                updateInstallNotification(appContext, "Downloading $titlePrefix", "Connecting...", -1)
 
-                            val contentLength = body.contentLength()
-                            val expectedTotal = if (contentLength > 0) contentLength else targetSizeBytes
-                            var bytesReadTotal = 0L
-                            val startTime = System.currentTimeMillis()
+                                val request = Request.Builder()
+                                    .url(targetUrl)
+                                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36")
+                                    .build()
 
-                            val buffer = ByteArray(64 * 1024)
-                            FileOutputStream(tempZipFile).use { outStream ->
-                                body.byteStream().use { inStream ->
-                                    var read: Int
-                                    var lastUpdate = System.currentTimeMillis()
-                                    while (inStream.read(buffer).also { read = it } != -1) {
-                                        outStream.write(buffer, 0, read)
-                                        bytesReadTotal += read
+                                val ok = httpClient.newCall(request).execute().use { response ->
+                                    if (!response.isSuccessful) {
+                                        lastError = "HTTP ${response.code} from server."
+                                        log("Server returned $lastError for $targetUrl, trying next mirror...")
+                                        return@use false
+                                    }
+                                    val body = response.body ?: return@use false
+                                    val contentLength = body.contentLength()
+                                    val expectedTotal = if (contentLength > 0) contentLength else targetSizeBytes
+                                    var bytesReadTotal = 0L
+                                    val startTime = System.currentTimeMillis()
+                                    val buffer = ByteArray(64 * 1024)
 
-                                        val now = System.currentTimeMillis()
-                                        if (now - lastUpdate > 120) {
-                                            val elapsedSec = (now - startTime) / 1000.0
-                                            val speed = if (elapsedSec > 0) bytesReadTotal / elapsedSec else 0.0
-                                            val speedFormatted = "${formatFileSize(speed.toLong())}/s"
-                                            val fraction = (bytesReadTotal.toFloat() / expectedTotal.toFloat()).coerceIn(0.05f, 0.95f)
+                                    FileOutputStream(tempZipFile).use { outStream ->
+                                        body.byteStream().use { inStream ->
+                                            var read: Int
+                                            var lastUpdate = System.currentTimeMillis()
+                                            while (inStream.read(buffer).also { read = it } != -1) {
+                                                outStream.write(buffer, 0, read)
+                                                bytesReadTotal += read
 
-                                            _installerState.value = LocalInstallerState.Downloading(
-                                                bytesDownloaded = bytesReadTotal,
-                                                totalBytes = expectedTotal,
-                                                progressFraction = fraction,
-                                                speedText = speedFormatted,
-                                                currentPackageName = targetAsset
-                                            )
-                                            val pct = (fraction * 100).toInt()
-                                            updateInstallNotification(appContext, "Downloading $titlePrefix ($pct%)", "$speedFormatted • $targetAsset", pct)
-                                            lastUpdate = now
+                                                val now = System.currentTimeMillis()
+                                                if (now - lastUpdate > 120) {
+                                                    val elapsedSec = (now - startTime) / 1000.0
+                                                    val speed = if (elapsedSec > 0) bytesReadTotal / elapsedSec else 0.0
+                                                    val speedFormatted = "${formatFileSize(speed.toLong())}/s"
+                                                    val fraction = (bytesReadTotal.toFloat() / expectedTotal.toFloat()).coerceIn(0.05f, 0.95f)
+
+                                                    _installerState.value = LocalInstallerState.Downloading(
+                                                        bytesDownloaded = bytesReadTotal,
+                                                        totalBytes = expectedTotal,
+                                                        progressFraction = fraction,
+                                                        speedText = speedFormatted,
+                                                        currentPackageName = targetAsset
+                                                    )
+                                                    val pct = (fraction * 100).toInt()
+                                                    updateInstallNotification(appContext, "Downloading $titlePrefix ($pct%)", "$speedFormatted • $targetAsset", pct)
+                                                    lastUpdate = now
+                                                }
+                                            }
                                         }
                                     }
+                                    finalDownloadedSize = tempZipFile.length()
+                                    finalDownloadedSize >= MIN_BOOTSTRAP_SIZE_BYTES && validateArchiveIntegrity(tempZipFile)
                                 }
-                            }
 
-                            finalDownloadedSize = tempZipFile.length()
-                            if (finalDownloadedSize >= MIN_BOOTSTRAP_SIZE_BYTES && validateArchiveIntegrity(tempZipFile)) {
-                                downloadSucceeded = true
-                            } else {
-                                tempZipFile.delete()
-                                val errorMsg = "Downloaded rootfs archive was incomplete or corrupted."
-                                updateInstallNotification(appContext, "Installation Failed", errorMsg, -2, ongoing = false, force = true)
-                                _installerState.value = LocalInstallerState.Error(errorMessage = errorMsg, canRetry = true)
-                                return@withContext false
+                                if (ok) {
+                                    downloadSucceeded = true
+                                    break
+                                } else {
+                                    if (tempZipFile.exists()) tempZipFile.delete()
+                                }
+                            } catch (e: Exception) {
+                                log("Mirror error for $targetUrl: ${e.message}")
+                                lastError = e.message ?: "Connection error"
+                                if (tempZipFile.exists()) tempZipFile.delete()
                             }
                         }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Download attempt failed from $targetUrl: ${e.message}")
-                        if (tempZipFile.exists()) tempZipFile.delete()
-                        val errorMsg = "Download failed: ${e.message ?: "Network error"}"
-                        updateInstallNotification(appContext, "Installation Failed", errorMsg, -2, ongoing = false, force = true)
-                        _installerState.value = LocalInstallerState.Error(errorMessage = errorMsg, canRetry = true)
-                        return@withContext false
+
+                        if (!downloadSucceeded) {
+                            val errorMsg = "Download failed: $lastError"
+                            updateInstallNotification(appContext, "Installation Failed", errorMsg, -2, ongoing = false, force = true)
+                            _installerState.value = LocalInstallerState.Error(errorMessage = errorMsg, canRetry = true)
+                            return@withContext false
+                        }
                     }
                 }
 
