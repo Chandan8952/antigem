@@ -585,16 +585,35 @@ fun ServerStoppedPromptCard(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = {
-                com.example.gemini.data.local.LocalServerManager.startServer(context, forceRestart = true)
-            },
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("Start Server", fontWeight = FontWeight.Medium)
+            Button(
+                onClick = {
+                    com.example.gemini.data.local.LocalServerManager.startServer(context, forceRestart = true)
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Start Server", fontWeight = FontWeight.Medium)
+            }
+
+            OutlinedButton(
+                onClick = {
+                    val synced = com.example.gemini.data.local.LocalEnvironmentManager.syncJetskiToken(context)
+                    val msg = if (synced) "Login token synced! Starting engine…" else "Checking credentials & starting engine…"
+                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                    com.example.gemini.data.local.LocalServerManager.startServer(context, forceRestart = true)
+                },
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Sign In / Sync", fontWeight = FontWeight.Medium)
+            }
         }
     }
 }

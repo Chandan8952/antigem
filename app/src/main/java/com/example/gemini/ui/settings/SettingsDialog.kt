@@ -96,6 +96,7 @@ enum class SettingsSection(val title: String, val subtitle: String) {
     DATA_PROTECTION("Data Loss Protection", "Uninstall shield & App Info clear data protection"),
     COMMANDS("Commands & Permissions", "Auto-run policy, sandbox mode, and tool approvals"),
     ANTIGRAVITY("Antigravity", "CLI, MCP servers, skills & plugins, commands & permissions"),
+    AGY_ACCOUNT("Google Account & Sign In", "Google OAuth, access tokens, and model quotas"),
     AGY_CLI("Antigravity CLI", "agy version and install, on this device or the server"),
     CLAUDE("Claude Code", "Account, models, permissions, MCP, plugins & memory"),
     /** One Claude Code page (which one: the dialog's claudePage); not a page of its own for Jarvis. */
@@ -143,7 +144,7 @@ enum class SettingsSection(val title: String, val subtitle: String) {
 
     /** Where Back goes from this section. */
     val parent: SettingsSection get() = when (this) {
-        AGY_CLI, MCP, SKILLS_PLUGINS, COMMANDS -> ANTIGRAVITY
+        AGY_CLI, MCP, SKILLS_PLUGINS, COMMANDS, AGY_ACCOUNT -> ANTIGRAVITY
         CLAUDE_PAGE -> CLAUDE
         OPENCODE_PAGE -> OPENCODE
         TERMUX_API, X11_DESKTOP -> TERMUX_SUPPORT
@@ -427,6 +428,7 @@ fun SettingsDialog(
                         enabledAgents = enabledAgents,
                         claude = claude,
                         openCode = openCode,
+                        userEmail = userEmail,
                         onNavigate = { currentSection = it }
                     )
 
@@ -613,8 +615,22 @@ fun SettingsDialog(
                         allSkills = allSkills,
                         installedPlugins = installedPlugins,
                         commandAutoExecutionPolicy = commandAutoExecutionPolicy,
+                        userEmail = userEmail,
                         cardBg = cardBg,
                         onNavigate = { currentSection = it }
+                    )
+                    SettingsSection.AGY_ACCOUNT -> AntigravityAccountScreen(
+                        userEmail = userEmail,
+                        projectId = projectId,
+                        tier = tier,
+                        quotas = quotas,
+                        availableModels = availableModels,
+                        cardBg = cardBg,
+                        cardBorder = cardBorder,
+                        onLoginWithGoogle = onLoginWithGoogle,
+                        onLogout = onLogout,
+                        onManualTokenEntered = onManualTokenEntered,
+                        onRefreshQuotas = onRefreshQuotas
                     )
                     SettingsSection.AGY_CLI -> Column(
                         Modifier.fillMaxSize().bouncyVerticalScroll(rememberScrollState()).padding(16.dp)
@@ -707,6 +723,7 @@ private fun MainSettingsMenu(
     claude: com.example.gemini.ui.claude.ClaudeSettingsDeps? = null,
     openCode: com.example.gemini.data.agent.opencode.OpenCodeChatBackend? = null,
     enabledAgents: Set<com.example.gemini.domain.model.AgentKind> = setOf(com.example.gemini.domain.model.AgentKind.AGY),
+    userEmail: String? = null,
     onNavigate: (SettingsSection) -> Unit
 ) {
     val agyOn = com.example.gemini.domain.model.AgentKind.AGY in enabledAgents
@@ -760,8 +777,11 @@ private fun MainSettingsMenu(
                     openCodeOn -> "OpenCode"
                     else -> "Antigravity"
                 }),
-                if (agyOn) row(SettingsSection.ANTIGRAVITY, Icons.Outlined.RocketLaunch, GeminiBlue,
-                    if (activeMcp > 0) "$activeMcp MCP" else null) else null,
+                if (agyOn) {
+                    val agyValue = userEmail ?: if (activeMcp > 0) "$activeMcp MCP" else "Sign in required"
+                    val agyColor = if (userEmail != null) QuotaGreen else c.warning
+                    row(SettingsSection.ANTIGRAVITY, Icons.Outlined.RocketLaunch, GeminiBlue, agyValue, agyColor)
+                } else null,
                 if (claude != null && claudeOn) row(SettingsSection.CLAUDE, Icons.Outlined.AutoAwesome, ClaudeAccent, claudeValue, claudeColor) else null,
                 if (openCode != null && openCodeOn) row(SettingsSection.OPENCODE, Icons.Outlined.Code, com.example.gemini.ui.components.OpenCodeAccent, openCodeState?.label,
                     if (openCodeState == com.example.gemini.data.agent.opencode.OpenCodeState.READY) QuotaGreen else c.warning) else null,
@@ -809,6 +829,7 @@ private fun AntigravitySettingsMenu(
     allSkills: List<com.example.gemini.data.remote.dto.SkillDefinitionDto>,
     installedPlugins: List<com.example.gemini.data.remote.dto.InstalledPluginDto>,
     commandAutoExecutionPolicy: String,
+    userEmail: String? = null,
     cardBg: Color,
     onNavigate: (SettingsSection) -> Unit
 ) {
@@ -836,6 +857,13 @@ private fun AntigravitySettingsMenu(
         cardBg = cardBg,
         groups = listOf(
             listOf(
+                SettingsRowItem(
+                    Icons.Outlined.Person,
+                    GeminiBlue,
+                    SettingsSection.AGY_ACCOUNT.title,
+                    userEmail ?: "Sign in required",
+                    if (userEmail != null) QuotaGreen else c.warning
+                ) { onNavigate(SettingsSection.AGY_ACCOUNT) },
                 SettingsRowItem(Icons.Outlined.Terminal, GeminiBlue, SettingsSection.AGY_CLI.title, cliValue, cliColor) { onNavigate(SettingsSection.AGY_CLI) }
             ),
             listOf(
@@ -846,6 +874,272 @@ private fun AntigravitySettingsMenu(
             )
         )
     )
+}
+
+/** Settings → Antigravity → Account: Google OAuth, sign-in, token paste, and model quotas. */
+@Composable
+private fun AntigravityAccountScreen(
+    userEmail: String?,
+    projectId: String,
+    tier: String,
+    quotas: List<ModelQuota>,
+    availableModels: List<AiModel>,
+    cardBg: Color,
+    cardBorder: BorderStroke,
+    onLoginWithGoogle: () -> Unit,
+    onLogout: () -> Unit,
+    onManualTokenEntered: (String) -> Unit,
+    onRefreshQuotas: () -> Unit
+) {
+    val context = LocalContext.current
+    val c = com.example.gemini.theme.AppColors
+    var manualToken by remember { mutableStateOf("") }
+    var showManualInput by remember { mutableStateOf(false) }
+    var importStatus by remember { mutableStateOf<String?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .bouncyVerticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Account Status Card
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = cardBg),
+            border = cardBorder,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(if (userEmail != null) GeminiBlue.copy(alpha = 0.15f) else c.warning.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (userEmail != null) Icons.Default.Person else Icons.Outlined.PersonOff,
+                            contentDescription = null,
+                            tint = if (userEmail != null) GeminiBlue else c.warning,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = userEmail ?: "Not Signed In",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = if (userEmail != null) "Project: $projectId · Tier: ${tier.uppercase()}" else "Sign in with Google to chat & use Gemini",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                    if (userEmail != null) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = QuotaGreen.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                "Connected",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = QuotaGreen,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onLoginWithGoogle,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GeminiBlue)
+                    ) {
+                        Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (userEmail != null) "Re-authenticate" else "Sign in with Google", fontSize = 13.sp)
+                    }
+
+                    if (userEmail != null) {
+                        OutlinedButton(
+                            onClick = onLogout,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = c.danger)
+                        ) {
+                            Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Sign Out", fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Token & Session Import Card
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = cardBg),
+            border = cardBorder,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text(
+                    text = "Session Token & Manual Input",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "If browser redirect fails, paste the code (4/0...), redirect URL, or import your saved token.",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { showManualInput = !showManualInput },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Outlined.Key, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (showManualInput) "Hide Input" else "Paste Token", fontSize = 12.5.sp)
+                    }
+
+                    Button(
+                        onClick = {
+                            val res = com.example.gemini.data.local.LocalEnvironmentManager.syncJetskiToken(context)
+                            importStatus = if (res) "Token imported successfully! Quotas refreshing..." else "No saved token found in Downloads."
+                            if (res) onRefreshQuotas()
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurface)
+                    ) {
+                        Icon(Icons.Outlined.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Import Token", fontSize = 12.5.sp)
+                    }
+                }
+
+                if (importStatus != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(importStatus!!, fontSize = 12.sp, color = if (importStatus!!.contains("success", ignoreCase = true)) QuotaGreen else c.warning)
+                }
+
+                if (showManualInput) {
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = manualToken,
+                        onValueChange = { manualToken = it },
+                        placeholder = { Text("Paste Callback URL, Code (4/0...), or ya29... token", fontSize = 12.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        singleLine = false,
+                        maxLines = 3
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            if (manualToken.isNotBlank()) {
+                                onManualTokenEntered(manualToken.trim())
+                                manualToken = ""
+                                showManualInput = false
+                                Toast.makeText(context, "Applied token, verifying...", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Apply URL / Code / Token", fontSize = 13.sp)
+                    }
+                }
+            }
+        }
+
+        // Live Model Quotas Card
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = cardBg),
+            border = cardBorder,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Live Model Quotas",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = onRefreshQuotas, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Outlined.Refresh, "Refresh Quotas", tint = GeminiBlue, modifier = Modifier.size(18.dp))
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                if (quotas.isEmpty()) {
+                    Text(
+                        "No quota information available yet. Tap Refresh or sign in.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                } else {
+                    quotas.forEach { quota ->
+                        val model = availableModels.find { it.id == quota.modelId }
+                        val name = model?.displayName ?: quota.modelId
+                        val pct = quota.percentage ?: 0
+                        val barColor = if (pct > 50) QuotaGreen else if (pct > 20) QuotaAmber else QuotaRed
+
+                        Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(name, fontSize = 12.5.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
+                                Text(if (quota.remainingFraction != null) "$pct%" else "N/A", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = barColor)
+                            }
+                            Spacer(Modifier.height(2.dp))
+                            LinearProgressIndicator(
+                                progress = { (pct / 100f).coerceIn(0f, 1f) },
+                                modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                                color = barColor,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /** Settings → Termux Support: the features that work with Termux companion apps (they need the Shared UID build). */
@@ -897,7 +1191,6 @@ private fun UtilitiesSubScreen(
 @Composable
 private fun rememberGitHubRow(onNavigate: (SettingsSection) -> Unit): SettingsRowItem? {
     val context = LocalContext.current
-    if (!com.example.gemini.data.local.LocalEnvironmentManager.isTermuxPackage(context)) return null
     LaunchedEffect(Unit) {
         com.example.gemini.data.github.GitHubManager.init(context)
         com.example.gemini.data.github.GitHubManager.refreshIfStale()

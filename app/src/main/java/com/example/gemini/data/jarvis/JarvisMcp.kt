@@ -1226,8 +1226,6 @@ object JarvisMcp {
 
     /** Null when GitHub works here; otherwise why not, and what the user should do. */
     private suspend fun githubProblem(context: Context): String? {
-        if (!com.example.gemini.data.local.LocalEnvironmentManager.isTermuxPackage(context))
-            return "GitHub sign-in is only in the Termux build of AntiGem."
         val s = com.example.gemini.data.github.GitHubManager.statusNow(context)
         val where = if (com.example.gemini.data.github.GitHubManager.remote) "on the server" else "in the terminal"
         return when {
@@ -1240,7 +1238,6 @@ object JarvisMcp {
     }
 
     private suspend fun githubStatus(context: Context): JSONObject {
-        if (!com.example.gemini.data.local.LocalEnvironmentManager.isTermuxPackage(context)) return error("GitHub sign-in is only in the Termux build of AntiGem.")
         val gh = com.example.gemini.data.github.GitHubManager
         val s = gh.statusNow(context)
         return json(JSONObject().apply {

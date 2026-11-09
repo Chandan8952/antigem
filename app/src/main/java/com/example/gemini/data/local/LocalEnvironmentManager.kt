@@ -174,6 +174,66 @@ object LocalEnvironmentManager {
     fun getUbuntuRootDir(context: Context): File = File(context.filesDir, "ubuntu")
     fun isTermuxPackage(context: Context): Boolean = context.packageName == "com.termux"
 
+    fun syncJetskiToken(context: Context): Boolean {
+        return try {
+            val downloadDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+            val downloadedToken = File(downloadDir, "jetski-standalone-oauth-token")
+            if (!downloadedToken.exists() || downloadedToken.length() < 10) {
+                return false
+            }
+
+            var anyCopied = false
+            val targetDirs = mutableListOf<File>()
+            if (isTermuxPackage(context)) {
+                targetDirs.add(File(getHomeDir(context), ".gemini"))
+            } else {
+                val ubuntuDir = getUbuntuRootDir(context)
+                targetDirs.add(File(File(ubuntuDir, "root"), ".gemini"))
+                targetDirs.add(File(File(context.filesDir, "home"), ".gemini"))
+            }
+
+            for (dir in targetDirs) {
+                dir.mkdirs()
+                val target = File(dir, "jetski-standalone-oauth-token")
+                downloadedToken.copyTo(target, overwrite = true)
+                anyCopied = true
+                Log.i(TAG, "[AuthSync] Synced jetski token to ${target.absolutePath}")
+            }
+
+            try {
+                val jsonText = downloadedToken.readText()
+                val json = JSONObject(jsonText)
+                val tokenObj = json.optJSONObject("token")
+                val accessToken = tokenObj?.optString("access_token")
+                val refreshToken = tokenObj?.optString("refresh_token")
+                var email: String? = null
+                val idToken = json.optString("id_token")
+                if (idToken.isNotBlank()) {
+                    val parts = idToken.split(".")
+                    if (parts.size >= 2) {
+                        val payload = String(android.util.Base64.decode(parts[1], android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP))
+                        val idJson = JSONObject(payload)
+                        email = idJson.optString("email")
+                    }
+                }
+                if (!accessToken.isNullOrBlank()) {
+                    val prefs = AuthPreferences(context)
+                    runBlocking(Dispatchers.IO) {
+                        prefs.saveTokens(accessToken, refreshToken, email ?: "Google Account")
+                    }
+                    Log.i(TAG, "[AuthSync] Loaded access_token into AuthPreferences (email=$email)")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "[AuthSync] Warning parsing token json: ${e.message}")
+            }
+
+            anyCopied
+        } catch (e: Exception) {
+            Log.e(TAG, "[AuthSync] Error syncing jetski token: ${e.message}")
+            false
+        }
+    }
+
     fun ensureProotExtracted(context: Context): String {
         val binDir = File(context.filesDir, "bin")
         val libDir = File(context.filesDir, "lib")
@@ -458,6 +518,7 @@ object LocalEnvironmentManager {
     }
 
     fun isInstalled(context: Context): Boolean {
+        syncJetskiToken(context)
         if (!isTermuxPackage(context)) {
             return isUbuntuInstalled(context)
         }
