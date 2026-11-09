@@ -8,6 +8,7 @@ import android.util.Log
 import com.example.gemini.data.automation.AndroidAutomation
 import com.example.gemini.data.automation.AutomationAccessibilityService
 import kotlinx.coroutines.*
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

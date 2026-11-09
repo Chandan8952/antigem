@@ -1281,10 +1281,11 @@ private fun AppearanceSubScreen(
         Surface(
             shape = RoundedCornerShape(12.dp),
             color = cardBg,
-            border = BorderStroke(
-                if (com.example.gemini.theme.RgbLightingManager.isRgbEnabled) 2.dp else 1.dp,
-                if (com.example.gemini.theme.RgbLightingManager.isRgbEnabled) com.example.gemini.theme.RgbLightingManager.rainbowBrush else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-            )
+            border = if (com.example.gemini.theme.RgbLightingManager.isRgbEnabled) {
+                BorderStroke(2.dp, com.example.gemini.theme.RgbLightingManager.rainbowBrush)
+            } else {
+                BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+            }
         ) {
             Column(Modifier.fillMaxWidth().padding(14.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
