@@ -1650,7 +1650,19 @@ fun ChatScreen(
                                         statusColors = agentEntries.associate { it.agent to it.color }
                                     )
                                 }
-                                com.example.gemini.ui.components.ServerStoppedPromptCard()
+                                com.example.gemini.ui.components.ServerStoppedPromptCard(
+                                    userEmail = userEmail,
+                                    onLoginWithGoogle = {
+                                        val url = viewModel.getGoogleOAuthUrl()
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                        context.startActivity(intent)
+                                    },
+                                    onOpenAccountSettings = {
+                                        requestedSettingsSection = com.example.gemini.ui.settings.SettingsSection.AGY_ACCOUNT
+                                        showSettingsDialog = true
+                                    },
+                                    onStartServer = restartLocalServer
+                                )
                             }
                         }
                     } else if (isAgyChat && isServerInitializing && messages.isEmpty()) {

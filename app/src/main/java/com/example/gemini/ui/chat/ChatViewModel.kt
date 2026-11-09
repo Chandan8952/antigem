@@ -1298,6 +1298,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
             refreshQuotas()
+            com.example.gemini.data.local.LocalServerManager.startServer(getApplication(), forceRestart = true)
         }
     }
 
@@ -1417,6 +1418,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     android.util.Log.w("GeminiApp", "[OAuth] CodeAssist loading warning: ${assistRes.exceptionOrNull()?.message}")
                 }
                 refreshQuotas()
+                com.example.gemini.data.local.LocalServerManager.startServer(getApplication(), forceRestart = true)
             } else {
                 android.util.Log.e("GeminiApp", "[OAuth] Token exchange FAILED after retries: ${tokenRes?.exceptionOrNull()?.message}")
             }

@@ -766,6 +766,7 @@ private fun MainSettingsMenu(
         cardBg = cardBg,
         groups = listOf(
             listOf(
+                row(SettingsSection.AGY_ACCOUNT, Icons.Outlined.Person, GeminiBlue, userEmail ?: "Sign in with Google", if (userEmail != null) QuotaGreen else c.warning),
                 row(SettingsSection.APPEARANCE, Icons.Outlined.Palette, c.accentPink, com.example.gemini.theme.ThemeManager.current.name),
                 row(SettingsSection.SERVERS, Icons.Outlined.Dns, c.info, serverValue, serverColor)
             ),

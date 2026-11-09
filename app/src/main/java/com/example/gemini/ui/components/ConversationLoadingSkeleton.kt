@@ -12,6 +12,8 @@ import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material3.*
@@ -23,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.example.gemini.theme.QuotaGreen
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -535,9 +538,15 @@ fun NewChatCheckingAuthPromptCard(
  */
 @Composable
 fun ServerStoppedPromptCard(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    userEmail: String? = null,
+    onLoginWithGoogle: (() -> Unit)? = null,
+    onOpenAccountSettings: (() -> Unit)? = null,
+    onStartServer: (() -> Unit)? = null
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val hasEmail = !userEmail.isNullOrBlank()
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -549,16 +558,20 @@ fun ServerStoppedPromptCard(
             modifier = Modifier
                 .size(64.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                .background(if (hasEmail) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.error.copy(alpha = 0.12f))
                 .clickable {
-                    com.example.gemini.data.local.LocalServerManager.startServer(context, forceRestart = true)
+                    if (onStartServer != null) {
+                        onStartServer()
+                    } else {
+                        com.example.gemini.data.local.LocalServerManager.startServer(context, forceRestart = true)
+                    }
                 },
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Outlined.PowerSettingsNew,
                 contentDescription = "Start Server",
-                tint = MaterialTheme.colorScheme.primary,
+                tint = if (hasEmail) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(32.dp)
             )
         }
@@ -575,44 +588,133 @@ fun ServerStoppedPromptCard(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = "Tap the button below or the power icon above to start the local AI engine.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-            textAlign = TextAlign.Center,
-            lineHeight = 20.sp
-        )
+        if (hasEmail) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(bottom = 6.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(QuotaGreen)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Signed in as $userEmail",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = QuotaGreen,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            Text(
+                text = "Tap the button below or the power icon above to start the local AI engine.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp
+            )
+        } else {
+            Text(
+                text = "Google sign-in is required to start the local engine and use Gemini models.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        if (!hasEmail) {
             Button(
                 onClick = {
-                    com.example.gemini.data.local.LocalServerManager.startServer(context, forceRestart = true)
+                    if (onLoginWithGoogle != null) {
+                        onLoginWithGoogle()
+                    } else {
+                        onOpenAccountSettings?.invoke()
+                    }
                 },
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                modifier = Modifier.fillMaxWidth(0.85f)
             ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Start Server", fontWeight = FontWeight.Medium)
+                Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Sign in with Google", fontWeight = FontWeight.SemiBold)
             }
 
-            OutlinedButton(
-                onClick = {
-                    val synced = com.example.gemini.data.local.LocalEnvironmentManager.syncJetskiToken(context)
-                    val msg = if (synced) "Login token synced! Starting engine…" else "Checking credentials & starting engine…"
-                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
-                    com.example.gemini.data.local.LocalServerManager.startServer(context, forceRestart = true)
-                },
-                shape = RoundedCornerShape(12.dp)
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Sign In / Sync", fontWeight = FontWeight.Medium)
+                OutlinedButton(
+                    onClick = {
+                        if (onStartServer != null) {
+                            onStartServer()
+                        } else {
+                            com.example.gemini.data.local.LocalServerManager.startServer(context, forceRestart = true)
+                        }
+                    },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Start Server", fontSize = 12.5.sp)
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        val synced = com.example.gemini.data.local.LocalEnvironmentManager.syncJetskiToken(context)
+                        val msg = if (synced) "Login token synced! Starting engine…" else "No saved token found in Downloads."
+                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                        if (synced) {
+                            if (onStartServer != null) onStartServer() else com.example.gemini.data.local.LocalServerManager.startServer(context, forceRestart = true)
+                        } else {
+                            onOpenAccountSettings?.invoke()
+                        }
+                    },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(Icons.Outlined.Key, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Sync / Paste Token", fontSize = 12.5.sp)
+                }
+            }
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = {
+                        if (onStartServer != null) {
+                            onStartServer()
+                        } else {
+                            com.example.gemini.data.local.LocalServerManager.startServer(context, forceRestart = true)
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Start Server", fontWeight = FontWeight.Medium)
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        onOpenAccountSettings?.invoke()
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Outlined.Person, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Account & Quotas", fontWeight = FontWeight.Medium)
+                }
             }
         }
     }
