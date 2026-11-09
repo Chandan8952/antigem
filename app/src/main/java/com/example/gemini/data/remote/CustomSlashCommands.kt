@@ -94,6 +94,14 @@ object CustomSlashCommands {
                 The user wants to coordinate a Multi-Agent Swarm for this coding/execution task: ${'$'}ARGUMENTS
                 Break down the objective into a dependency DAG and dispatch specialized agents (Architect, Coder, Reviewer, Tester, Docs) to collaborate concurrently with shared memory and runtime verification.
             """.trimIndent()
+        ),
+        CustomSlashCommand(
+            name = "rgb",
+            description = "Toggle and control animated RGB Chroma rainbow lighting across the entire UI and text",
+            expansion = """
+                The user wants to control RGB Chroma lighting across the whole UI and text: ${'$'}ARGUMENTS
+                Call theme_set_rgb_light tool with enabled=true/false, speed (0.2 to 3.0), intensity (0.2 to 1.0), and text_glow=true/false based on user request.
+            """.trimIndent()
         )
     )
 

@@ -113,13 +113,25 @@ fun GeminiTheme(
         }
     }
 
-    CompositionLocalProvider(
-        LocalIsDarkTheme provides darkTheme
-    ) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            typography = Typography,
-            content = content
+    val effectiveColorScheme = if (RgbLightingManager.isRgbEnabled) {
+        colorScheme.copy(
+            primary = RgbLightingManager.primaryRgbColor,
+            secondary = RgbLightingManager.secondaryRgbColor,
+            tertiary = RgbLightingManager.tertiaryRgbColor
         )
+    } else {
+        colorScheme
+    }
+
+    RgbLightingHost {
+        CompositionLocalProvider(
+            LocalIsDarkTheme provides darkTheme
+        ) {
+            MaterialTheme(
+                colorScheme = effectiveColorScheme,
+                typography = Typography,
+                content = content
+            )
+        }
     }
 }

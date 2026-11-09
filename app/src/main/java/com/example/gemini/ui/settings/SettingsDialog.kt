@@ -1277,6 +1277,78 @@ private fun AppearanceSubScreen(
             }
         }
 
+        // RGB Chroma Lighting Card
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = cardBg,
+            border = BorderStroke(
+                if (com.example.gemini.theme.RgbLightingManager.isRgbEnabled) 2.dp else 1.dp,
+                if (com.example.gemini.theme.RgbLightingManager.isRgbEnabled) com.example.gemini.theme.RgbLightingManager.rainbowBrush else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+            )
+        ) {
+            Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "🌈 RGB Chroma Lighting & Text Glow",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (com.example.gemini.theme.RgbLightingManager.isRgbEnabled) com.example.gemini.theme.RgbLightingManager.primaryRgbColor else MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            "Real-time animated rainbow RGB lighting across the entire UI, accents, borders, and text.",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                    Switch(
+                        checked = com.example.gemini.theme.RgbLightingManager.isRgbEnabled,
+                        onCheckedChange = { com.example.gemini.theme.RgbLightingManager.setEnabled(it) }
+                    )
+                }
+
+                if (com.example.gemini.theme.RgbLightingManager.isRgbEnabled) {
+                    Spacer(Modifier.height(12.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                    Spacer(Modifier.height(10.dp))
+
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Rainbow Text Glow", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Switch(
+                            checked = com.example.gemini.theme.RgbLightingManager.textGlow,
+                            onCheckedChange = { com.example.gemini.theme.RgbLightingManager.setTextGlowEnabled(it) }
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Chroma Border Glow", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Switch(
+                            checked = com.example.gemini.theme.RgbLightingManager.borderGlow,
+                            onCheckedChange = { com.example.gemini.theme.RgbLightingManager.setBorderGlowEnabled(it) }
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Text("Animation Speed: %.1fx".format(com.example.gemini.theme.RgbLightingManager.speed), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Slider(
+                        value = com.example.gemini.theme.RgbLightingManager.speed,
+                        onValueChange = { com.example.gemini.theme.RgbLightingManager.setSpeedValue(it) },
+                        valueRange = 0.2f..3.0f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Text("Color Intensity: %.0f%%".format(com.example.gemini.theme.RgbLightingManager.intensity * 100), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Slider(
+                        value = com.example.gemini.theme.RgbLightingManager.intensity,
+                        onValueChange = { com.example.gemini.theme.RgbLightingManager.setIntensityValue(it) },
+                        valueRange = 0.2f..1.0f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+
         // Theme Selector Header
         Text(
             text = "Color Theme",

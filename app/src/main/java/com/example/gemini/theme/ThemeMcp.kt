@@ -62,6 +62,14 @@ object ThemeMcp {
         put(tool("theme_export", "A theme as JSON (to share or keep).", emptyList(), idProp))
         put(tool("theme_import", "Add a theme from JSON (as made by theme_export).", listOf("json"),
             "json" to prop("string", "The theme JSON"), "apply" to prop("boolean", "Use it right away (default false)")))
+        put(tool("theme_set_rgb_light", "Toggle or configure real-time animated RGB Chroma rainbow lighting across the entire UI, accents, borders, and text.", listOf("enabled"),
+            "enabled" to prop("boolean", "Turn RGB lighting on or off"),
+            "speed" to prop("number", "Animation speed from 0.2 (slow wave) to 3.0 (fast pulse). Default 1.0"),
+            "intensity" to prop("number", "RGB color intensity from 0.2 to 1.0. Default 1.0"),
+            "text_glow" to prop("boolean", "Whether text should have an RGB rainbow glow effect. Default true"),
+            "border_glow" to prop("boolean", "Whether cards and buttons should have animated RGB borders. Default true")
+        ))
+        put(tool("theme_get_rgb_status", "Get current status, speed, intensity, and glow parameters of the RGB Chroma lighting system."))
     }
 
     private fun text(message: String) = JSONObject().put("content", JSONArray().put(JSONObject().put("type", "text").put("text", message)))
@@ -193,6 +201,32 @@ object ThemeMcp {
                 val saved = ThemeManager.saveCustom(t.copy(id = ThemeManager.newId(t.name)))
                 val mode = if (args.optBoolean("apply")) ThemeManager.select(saved) else null
                 report(saved, emptyList(), mode, args.optBoolean("apply"))
+            }
+            "theme_set_rgb_light" -> {
+                val enabled = args.getBoolean("enabled")
+                RgbLightingManager.setEnabled(enabled)
+                if (args.has("speed")) RgbLightingManager.setSpeedValue(args.getDouble("speed").toFloat())
+                if (args.has("intensity")) RgbLightingManager.setIntensityValue(args.getDouble("intensity").toFloat())
+                if (args.has("text_glow")) RgbLightingManager.setTextGlowEnabled(args.getBoolean("text_glow"))
+                if (args.has("border_glow")) RgbLightingManager.setBorderGlowEnabled(args.getBoolean("border_glow"))
+                json(JSONObject().apply {
+                    put("status", "success")
+                    put("rgb_enabled", RgbLightingManager.isRgbEnabled)
+                    put("speed", RgbLightingManager.speed)
+                    put("intensity", RgbLightingManager.intensity)
+                    put("text_glow", RgbLightingManager.textGlow)
+                    put("border_glow", RgbLightingManager.borderGlow)
+                })
+            }
+            "theme_get_rgb_status" -> {
+                json(JSONObject().apply {
+                    put("rgb_enabled", RgbLightingManager.isRgbEnabled)
+                    put("speed", RgbLightingManager.speed)
+                    put("intensity", RgbLightingManager.intensity)
+                    put("text_glow", RgbLightingManager.textGlow)
+                    put("border_glow", RgbLightingManager.borderGlow)
+                    put("current_hue", RgbLightingManager.currentHue)
+                })
             }
             else -> error("Unknown tool $name")
         }

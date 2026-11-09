@@ -28,7 +28,7 @@ In the **Quick Presets & Templates** section, AntiGem provides nine pre-configur
 | **Android** | *Tap, type & read this phone* | Local bridge `/android` (`android_automation_mcp`) for device automation, screen reading, and UI interaction |
 | **Notes & To-dos** | *Read & edit your notes* | Local bridge `/notes` (`notes_mcp`) for searching, reading, creating, and modifying local user notes |
 | **Jarvis** | *Voice control of this app* | Local bridge `/jarvis` (`jarvis_mcp`) for voice-driven tool invocation, project creation, and task management |
-| **Theme** | *Create & switch app themes* | Local bridge `/theme` (`theme_mcp`) for generating, previewing, and applying custom app color schemes |
+| **Theme** | *Create & switch app themes & RGB* | Local bridge `/theme` (`theme_mcp`) for generating, previewing, and applying custom app color schemes, plus dynamic RGB Chroma rainbow lighting controls (`theme_set_rgb_light`, `theme_get_rgb_status`) |
 | **Stitch** | *Google Stitch UI design · API key* | Remote SSE endpoint (`https://stitch.googleapis.com/mcp`) for generating UI prototypes using Google Stitch (requires entering your `X-Goog-Api-Key` in HTTP headers) |
 
 Tapping any preset tile opens the editor with all required arguments pre-filled, making it easy to configure or activate in seconds. If a preset is already active, its tile displays an added badge.

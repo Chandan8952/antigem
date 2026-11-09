@@ -54,6 +54,7 @@ object ThemeManager {
         darkId = p.getString("dark_id", null) ?: BuiltInThemes.DARK_DEFAULT
         // the mode decides which side shows before the first frame (the UI corrects it if the system says otherwise)
         isDark = p.getString("last_dark", null) == "1"
+        RgbLightingManager.init(context)
     }
 
     // ---------------------------------------------------------------- reading
@@ -327,35 +328,35 @@ class ThemeColors(scheme: ColorScheme, map: Map<String, Long>) {
  * (Reading them during composition or drawing subscribes to changes, like any Compose state.)
  */
 object AppColors {
-    val primary: Color get() = ThemeManager.colors.primary
-    val secondary: Color get() = ThemeManager.colors.secondary
-    val tertiary: Color get() = ThemeManager.colors.tertiary
+    val primary: Color get() = if (RgbLightingManager.isRgbEnabled) RgbLightingManager.primaryRgbColor else ThemeManager.colors.primary
+    val secondary: Color get() = if (RgbLightingManager.isRgbEnabled) RgbLightingManager.secondaryRgbColor else ThemeManager.colors.secondary
+    val tertiary: Color get() = if (RgbLightingManager.isRgbEnabled) RgbLightingManager.tertiaryRgbColor else ThemeManager.colors.tertiary
     val background: Color get() = ThemeManager.colors.background
     val surface: Color get() = ThemeManager.colors.surface
-    val onBackground: Color get() = ThemeManager.colors.onBackground
+    val onBackground: Color get() = if (RgbLightingManager.isRgbEnabled && RgbLightingManager.textGlow) RgbLightingManager.primaryRgbColor else ThemeManager.colors.onBackground
     val card: Color get() = ThemeManager.colors.card
-    val textSecondary: Color get() = ThemeManager.colors.textSecondary
+    val textSecondary: Color get() = if (RgbLightingManager.isRgbEnabled && RgbLightingManager.textGlow) RgbLightingManager.secondaryRgbColor else ThemeManager.colors.textSecondary
     val userBubble: Color get() = ThemeManager.colors.userBubble
     val thinkingBg: Color get() = ThemeManager.colors.thinkingBg
     val codeBg: Color get() = ThemeManager.colors.codeBg
-    val codeText: Color get() = ThemeManager.colors.codeText
+    val codeText: Color get() = if (RgbLightingManager.isRgbEnabled && RgbLightingManager.textGlow) RgbLightingManager.primaryRgbColor else ThemeManager.colors.codeText
     val success: Color get() = ThemeManager.colors.success
     val warning: Color get() = ThemeManager.colors.warning
     val danger: Color get() = ThemeManager.colors.danger
-    val info: Color get() = ThemeManager.colors.info
-    val accentAlt: Color get() = ThemeManager.colors.accentAlt
-    val syntaxKeyword: Color get() = ThemeManager.colors.syntaxKeyword
-    val syntaxType: Color get() = ThemeManager.colors.syntaxType
-    val syntaxString: Color get() = ThemeManager.colors.syntaxString
+    val info: Color get() = if (RgbLightingManager.isRgbEnabled) RgbLightingManager.tertiaryRgbColor else ThemeManager.colors.info
+    val accentAlt: Color get() = if (RgbLightingManager.isRgbEnabled) RgbLightingManager.tertiaryRgbColor else ThemeManager.colors.accentAlt
+    val syntaxKeyword: Color get() = if (RgbLightingManager.isRgbEnabled) RgbLightingManager.primaryRgbColor else ThemeManager.colors.syntaxKeyword
+    val syntaxType: Color get() = if (RgbLightingManager.isRgbEnabled) RgbLightingManager.secondaryRgbColor else ThemeManager.colors.syntaxType
+    val syntaxString: Color get() = if (RgbLightingManager.isRgbEnabled) RgbLightingManager.tertiaryRgbColor else ThemeManager.colors.syntaxString
     val syntaxNumber: Color get() = ThemeManager.colors.syntaxNumber
     val syntaxComment: Color get() = ThemeManager.colors.syntaxComment
-    val syntaxFunction: Color get() = ThemeManager.colors.syntaxFunction
+    val syntaxFunction: Color get() = if (RgbLightingManager.isRgbEnabled) RgbLightingManager.primaryRgbColor else ThemeManager.colors.syntaxFunction
     val syntaxAnnotation: Color get() = ThemeManager.colors.syntaxAnnotation
     val syntaxPunctuation: Color get() = ThemeManager.colors.syntaxPunctuation
     val syntaxControl: Color get() = ThemeManager.colors.syntaxControl
     val syntaxTag: Color get() = ThemeManager.colors.syntaxTag
     val syntaxAttribute: Color get() = ThemeManager.colors.syntaxAttribute
-    val border: Color get() = ThemeManager.colors.border
+    val border: Color get() = if (RgbLightingManager.isRgbEnabled && RgbLightingManager.borderGlow) RgbLightingManager.primaryRgbColor else ThemeManager.colors.border
     val fill: Color get() = ThemeManager.colors.fill
     val successContainer: Color get() = ThemeManager.colors.successContainer
     val warningContainer: Color get() = ThemeManager.colors.warningContainer
