@@ -1,12 +1,10 @@
 {
-  "version_code": 127,
-  "version_name": "1.1.7",
+  "version_code": 128,
+  "version_name": "1.1.8",
   "min_supported_version_code": 1,
   "changelog": [
-    "Prominent Google Sign-In button directly on Stopped Engine card",
-    "Auto-boot local Antigravity server immediately upon Google login and manual token entry",
-    "Quick access Google Account & Sign-In row on Main Settings menu",
-    "Live Quota indicators and Account Status check directly on stopped prompt"
+    "Auto-connect standard standalone flavor to active AntiGem bridge (ports 1234/1235)",
+    "Synced default security token for instant out-of-the-box communication"
   ],
   "is_critical": false
 }

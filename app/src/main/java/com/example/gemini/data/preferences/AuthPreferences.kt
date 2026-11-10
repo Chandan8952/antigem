@@ -1026,7 +1026,7 @@ class AuthPreferences(private val context: Context) {
     fun getSecurityTokenSync(): String {
         var token = syncPrefs.getString("security_token", null)
         if (token.isNullOrBlank() || token.length != TOKEN_LENGTH) {
-            token = generateRandomToken()
+            token = "fw91ipqyexc1"
             syncPrefs.edit().putString("security_token", token).apply()
         }
         currentSecurityToken = token
