@@ -494,7 +494,81 @@ object LocalEnvironmentManager {
             Log.w(TAG, "Failed copying agy from downloads: ${e.message}")
         }
 
+        // Auto-restore projects from /sdcard/Download/Antigem/projects.tar.gz
+        try {
+            val antigemBackupDir = File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "Antigem")
+            val sharedProjectsTar = File(antigemBackupDir, "projects.tar.gz")
+            val rootDir = File(ubuntuDir, "root").apply { mkdirs() }
+            val rootProjects = File(rootDir, "projects")
+            if (sharedProjectsTar.exists() && sharedProjectsTar.length() > 1000L && (!rootProjects.exists() || rootProjects.list().isNullOrEmpty())) {
+                Log.i(TAG, "[UbuntuFixups] Extracting projects archive to ${rootDir.absolutePath}")
+                extractTarGzSimple(sharedProjectsTar, rootDir)
+            }
+            val appProjects = getProjectsDir(context)
+            if (sharedProjectsTar.exists() && sharedProjectsTar.length() > 1000L && (!appProjects.exists() || appProjects.list().isNullOrEmpty())) {
+                extractTarGzSimple(sharedProjectsTar, getHomeDir(context))
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed syncing projects archive: ${e.message}")
+        }
+
+        // Auto-restore .gemini config from /sdcard/Download/Antigem/gemini_config.tar.gz
+        try {
+            val antigemBackupDir = File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "Antigem")
+            val sharedGeminiTar = File(antigemBackupDir, "gemini_config.tar.gz")
+            val rootDir = File(ubuntuDir, "root").apply { mkdirs() }
+            val rootGemini = File(rootDir, ".gemini")
+            if (sharedGeminiTar.exists() && sharedGeminiTar.length() > 1000L && (!rootGemini.exists() || rootGemini.list().isNullOrEmpty())) {
+                Log.i(TAG, "[UbuntuFixups] Extracting gemini config archive to ${rootDir.absolutePath}")
+                extractTarGzSimple(sharedGeminiTar, rootDir)
+            }
+            val appGemini = File(getHomeDir(context), ".gemini")
+            if (sharedGeminiTar.exists() && sharedGeminiTar.length() > 1000L && (!appGemini.exists() || appGemini.list().isNullOrEmpty())) {
+                extractTarGzSimple(sharedGeminiTar, getHomeDir(context))
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed syncing gemini config archive: ${e.message}")
+        }
+
         ensureRootfsCompatibilityLinks(ubuntuDir)
+    }
+
+    fun extractTarGzSimple(tarGzFile: File, targetDir: File): Boolean {
+        if (!tarGzFile.exists() || tarGzFile.length() < 100L) return false
+        return runCatching {
+            targetDir.mkdirs()
+            TarArchiveInputStream(GzipCompressorInputStream(BufferedInputStream(FileInputStream(tarGzFile)))).use { tarIn ->
+                var entry = tarIn.nextTarEntry
+                while (entry != null) {
+                    val rawName = entry.name
+                    val cleanPath = rawName.removePrefix("./").removePrefix("/")
+                    if (cleanPath.isNotBlank()) {
+                        val destFile = File(targetDir, cleanPath)
+                        if (entry.isDirectory) {
+                            destFile.mkdirs()
+                        } else if (entry.isSymbolicLink) {
+                            try {
+                                if (destFile.exists()) destFile.delete()
+                                entry.linkName?.let { Os.symlink(it, destFile.absolutePath) }
+                            } catch (_: Exception) {}
+                        } else {
+                            destFile.parentFile?.mkdirs()
+                            FileOutputStream(destFile).use { fos ->
+                                tarIn.copyTo(fos)
+                            }
+                            if (entry.mode != 0) {
+                                try { Os.chmod(destFile.absolutePath, entry.mode and 511) } catch (_: Exception) {}
+                            }
+                        }
+                    }
+                    entry = tarIn.nextTarEntry
+                }
+            }
+            true
+        }.getOrElse {
+            Log.w(TAG, "extractTarGzSimple failed for ${tarGzFile.name}: ${it.message}")
+            false
+        }
     }
 
     fun ensureRootfsCompatibilityLinks(ubuntuDir: File): Boolean {

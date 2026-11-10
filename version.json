@@ -1,12 +1,12 @@
 {
-  "version_code": 129,
-  "version_name": "1.1.9",
+  "version_code": 130,
+  "version_name": "1.1.10",
   "min_supported_version_code": 1,
   "changelog": [
-    "Independent isolated standalone mode with PRoot Ubuntu rootfs",
-    "Auto-link shared local agy AI engine binary from Downloads",
-    "Dedicated isolated ports (1236/1237) for zero conflicts with host Termux",
-    "Export signing keystore for permanent seamless updates"
+    "Automatic 1:1 original setup restoration from Downloads",
+    "Auto-extract all 6 workspace projects into standalone rootfs",
+    "Auto-restore .gemini configuration, skills, and MCP tools",
+    "Auto-run Ubuntu setup fixups on bridge start"
   ],
   "is_critical": false
 }

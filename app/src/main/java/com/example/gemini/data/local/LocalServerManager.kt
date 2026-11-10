@@ -367,6 +367,9 @@ object LocalServerManager {
         // the bridge starts Claude Code through the app's launcher (--claude-bin)
         LocalEnvironmentManager.ensureGlibcEnvironment(appContext)
         LocalEnvironmentManager.ensureClaudeWrapper(appContext)
+        if (!LocalEnvironmentManager.isTermuxPackage(appContext) && LocalEnvironmentManager.isUbuntuInstalled(appContext)) {
+            LocalEnvironmentManager.setupProotDistroUbuntuFixups(appContext, LocalEnvironmentManager.getUbuntuRootDir(appContext))
+        }
 
         val command = resolveServerCommand(appContext)
         if (command == null) {
