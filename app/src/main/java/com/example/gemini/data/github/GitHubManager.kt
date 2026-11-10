@@ -388,13 +388,13 @@ object GitHubManager {
         installJob = scope.launch {
             _state.update { it.copy(installing = true, installLog = emptyList(), installError = null) }
             // Stale package lists point at files the mirror no longer has (404), so refresh them first
-            val command = "apt-get update && pkg install -y gh"
+            val command = "if command -v pkg >/dev/null 2>&1; then pkg install -y gh; else apt-get update && apt-get install -y gh; fi"
             appendInstallLog("$ $command")
             val result = shell(command, 900) { line -> if (line.isNotBlank()) appendInstallLog(line) }
             refreshNow()
             val ok = _state.value.ghInstalled == true
             _state.update {
-                it.copy(installing = false, installError = if (ok) null else "Install failed (exit ${result.exitCode}). Check the log above, or run \"pkg install gh\" in the terminal.")
+                it.copy(installing = false, installError = if (ok) null else "Install failed (exit ${result.exitCode}). Check the log above, or run \"pkg install gh\" or \"apt-get install gh\" in the terminal.")
             }
             if (ok) appendInstallLog("✓ ${_state.value.ghVersion ?: "gh installed"}")
         }
