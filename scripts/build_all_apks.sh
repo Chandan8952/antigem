@@ -45,9 +45,9 @@ if [[ "${MODE}" == "release" ]]; then
     find "${APKS_SRC}/termux/release" -name "*.apk" -exec cp {} "${OUTPUT_DIR}/antiGem-termux-v${VERSION_NAME}-release.apk" \;
     find "${APKS_SRC}/termuxShared/release" -name "*.apk" -exec cp {} "${OUTPUT_DIR}/antiGem-termux-shared-v${VERSION_NAME}-release.apk" \;
 
-    # if [[ -f "${ROOT_DIR}/app/src/main/assets/bin/agy_ide_bridge" ]]; then
-    #     cp "${ROOT_DIR}/app/src/main/assets/bin/agy_ide_bridge" "${OUTPUT_DIR}/agy_ide_bridge-v${VERSION_NAME}-android-arm64"
-    # fi
+    if [[ -f "${ROOT_DIR}/app/release.jks" ]]; then
+        cp "${ROOT_DIR}/app/release.jks" "${OUTPUT_DIR}/release-signing-keystore.jks"
+    fi
 else
     echo "🔨 Compiling Standard Debug (:app:assembleStandardDebug)..."
     "${ROOT_DIR}/gradlew" -p "${ROOT_DIR}" :app:assembleStandardDebug

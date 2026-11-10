@@ -477,6 +477,23 @@ object LocalEnvironmentManager {
         )
         try { Os.chmod(termuxProfile.absolutePath, 420) } catch (_: Exception) {}
 
+        // Ensure agy binary from shared downloads is copied into Ubuntu rootfs
+        try {
+            val rootBinDir = File(File(ubuntuDir, "root"), ".local/bin").apply { mkdirs() }
+            val targetAgy = File(rootBinDir, "agy")
+            if (!targetAgy.exists() || targetAgy.length() == 0L) {
+                val sharedAgy = File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "agy")
+                if (sharedAgy.exists() && sharedAgy.length() > 10_000_000L) {
+                    sharedAgy.copyTo(targetAgy, overwrite = true)
+                    targetAgy.setExecutable(true, false)
+                    targetAgy.setReadable(true, false)
+                    Log.i(TAG, "[UbuntuFixups] Copied shared agy to ${targetAgy.absolutePath}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed copying agy from downloads: ${e.message}")
+        }
+
         ensureRootfsCompatibilityLinks(ubuntuDir)
     }
 

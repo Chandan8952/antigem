@@ -56,9 +56,9 @@ android {
         create("standard") {
             dimension = "mode"
             applicationId = "com.antigem"
-            buildConfigField("int", "BRIDGE_PORT", "1234")
-            buildConfigField("int", "HUB_PORT", "1235")
-            buildConfigField("int", "BROWSER_MCP_PORT", "8765")
+            buildConfigField("int", "BRIDGE_PORT", "1236")
+            buildConfigField("int", "HUB_PORT", "1237")
+            buildConfigField("int", "BROWSER_MCP_PORT", "8766")
             buildConfigField("boolean", "IS_SHARED_USER_ID", "false")
         }
         create("termux") {

@@ -1,10 +1,12 @@
 {
-  "version_code": 128,
-  "version_name": "1.1.8",
+  "version_code": 129,
+  "version_name": "1.1.9",
   "min_supported_version_code": 1,
   "changelog": [
-    "Auto-connect standard standalone flavor to active AntiGem bridge (ports 1234/1235)",
-    "Synced default security token for instant out-of-the-box communication"
+    "Independent isolated standalone mode with PRoot Ubuntu rootfs",
+    "Auto-link shared local agy AI engine binary from Downloads",
+    "Dedicated isolated ports (1236/1237) for zero conflicts with host Termux",
+    "Export signing keystore for permanent seamless updates"
   ],
   "is_critical": false
 }
