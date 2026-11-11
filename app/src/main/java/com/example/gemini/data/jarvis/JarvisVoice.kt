@@ -166,7 +166,7 @@ object JarvisVoice {
         for (chunk in chunks(text)) {
             val engine = JarvisPreferences.ttsEngine.value
             val ok = when (engine) {
-                "google_cloud", "openai" -> playOnline(engine, chunk)
+                "gemini", "google_cloud", "openai" -> playOnline(engine, chunk)
                 else -> false
             }
             if (!ok) speakAndroid(chunk)
@@ -255,14 +255,20 @@ object JarvisVoice {
     // ---- online voices
 
     private suspend fun playOnline(engine: String, text: String): Boolean {
-        val key = JarvisPreferences.ttsApiKey.value.trim()
+        val key = JarvisPreferences.ttsApiKey.value.trim().ifBlank {
+            System.getenv("GEMINI_API_KEY")?.trim().orEmpty()
+        }
         if (key.isBlank()) {
-            _lastError.value = "No API key set for the online voice; using the device voice."
+            _lastError.value = "No API key set for $engine voice; using the device voice."
             return false
         }
         return try {
             val bytes = withContext(Dispatchers.IO) {
-                if (engine == "google_cloud") googleCloud(text, key) else openAiSpeech(text, key)
+                when (engine) {
+                    "gemini" -> geminiSpeech(text, key)
+                    "google_cloud" -> googleCloud(text, key)
+                    else -> openAiSpeech(text, key)
+                }
             }
             if (bytes == null || bytes.isEmpty()) return false
             _lastError.value = null
@@ -274,6 +280,53 @@ object JarvisVoice {
             Log.w(TAG, "online voice failed: ${e.message}")
             _lastError.value = "Online voice failed (${e.message}); used the device voice."
             false
+        }
+    }
+
+    private fun geminiSpeech(text: String, key: String): ByteArray? {
+        val model = JarvisPreferences.ttsModel.value.ifBlank { "gemini-2.0-flash" }
+        val voice = JarvisPreferences.ttsVoice.value.ifBlank { "Charon" }
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$key"
+
+        val body = JSONObject().apply {
+            put("contents", org.json.JSONArray().put(
+                JSONObject().put("parts", org.json.JSONArray().put(
+                    JSONObject().put("text", text)
+                ))
+            ))
+            put("generationConfig", JSONObject().apply {
+                put("responseModalities", org.json.JSONArray().put("AUDIO"))
+                put("speechConfig", JSONObject().put(
+                    "voiceConfig", JSONObject().put(
+                        "prebuiltVoiceConfig", JSONObject().put("voiceName", voice)
+                    )
+                ))
+            })
+        }.toString()
+
+        val req = Request.Builder()
+            .url(url)
+            .post(body.toRequestBody("application/json".toMediaType()))
+            .build()
+
+        http.newCall(req).execute().use { resp ->
+            val s = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) {
+                val err = runCatching { JSONObject(s).optJSONObject("error")?.optString("message") }.getOrNull()
+                error("HTTP ${resp.code} ${err ?: s.take(150)}")
+            }
+            val resObj = JSONObject(s)
+            val candidates = resObj.optJSONArray("candidates")
+            val parts = candidates?.optJSONObject(0)?.optJSONObject("content")?.optJSONArray("parts")
+            for (i in 0 until (parts?.length() ?: 0)) {
+                val part = parts?.optJSONObject(i)
+                val inlineData = part?.optJSONObject("inlineData")
+                val base64Data = inlineData?.optString("data")
+                if (!base64Data.isNullOrBlank()) {
+                    return Base64.decode(base64Data, Base64.DEFAULT)
+                }
+            }
+            return null
         }
     }
 
@@ -357,6 +410,10 @@ object JarvisVoice {
     // ---- audio focus (other audio ducks while Jarvis talks)
 
     private fun requestFocus() {
+        if (JarvisPreferences.audioFocusBypass.value) {
+            // Audio focus bypassed: do not steal focus from YouTube or other media players
+            return
+        }
         val am = app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
         if (Build.VERSION.SDK_INT >= 26) {
             val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
@@ -376,6 +433,7 @@ object JarvisVoice {
     }
 
     private fun abandonFocus() {
+        if (JarvisPreferences.audioFocusBypass.value) return
         val am = app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
         if (Build.VERSION.SDK_INT >= 26) {
             focusRequest?.let { am.abandonAudioFocusRequest(it) }

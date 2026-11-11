@@ -407,10 +407,28 @@ fun JarvisSettingsSectionPage(page: JarvisSettingsPage, cardBg: Color, cardBorde
                     val quiet by P.quietMode.state.collectAsState()
                     JSwitch("Quiet mode", "Jarvis shows its answers on the card instead of saying them (meetings, night). Say “quiet mode off” to undo.", quiet) { P.quietMode.set(it) }
                     val engine by P.ttsEngine.state.collectAsState()
-                    JChips(listOf("android" to "This device", "google_cloud" to "Google Cloud", "openai" to "OpenAI-compatible"), engine) { P.ttsEngine.set(it) }
+                    JChips(listOf("gemini" to "Gemini Live", "android" to "This device", "google_cloud" to "Google Cloud", "openai" to "OpenAI-compatible"), engine) { P.ttsEngine.set(it) }
                     val voice by P.ttsVoice.state.collectAsState()
                     val language by P.ttsLanguage.state.collectAsState()
-                    if (engine == "android") {
+                    if (engine == "gemini") {
+                        val key by P.ttsApiKey.state.collectAsState()
+                        JField("Gemini API key", key, secret = true) { P.ttsApiKey.set(it) }
+                        Text("Voice Persona", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        val curVoice = voice.ifBlank { "Charon" }
+                        JChips(
+                            listOf(
+                                "Charon" to "Charon (Jarvis)",
+                                "Puck" to "Puck (Natural)",
+                                "Aoede" to "Aoede (Warm)",
+                                "Fenrir" to "Fenrir (Crisp)",
+                                "Kore" to "Kore (Soft)"
+                            ),
+                            curVoice
+                        ) { P.ttsVoice.set(it) }
+                        val model by P.ttsModel.state.collectAsState()
+                        JField("Model (default gemini-2.0-flash)", model) { P.ttsModel.set(it) }
+                        JHint("Uses official Google Gemini Live neural voices (the natural voice from the headphone button).")
+                    } else if (engine == "android") {
                         var voices by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
                         var menu by remember { mutableStateOf(false) }
                         LaunchedEffect(Unit) { voices = runCatching { JarvisVoice.deviceVoices() }.getOrDefault(emptyList()) }

@@ -69,19 +69,21 @@ object JarvisPreferences {
     val memory = pref("memory", "")
 
     // ---- voice output
-    /** "android" (device TTS), "google_cloud" or "openai" (any OpenAI-compatible /audio/speech API). */
-    val ttsEngine = pref("tts_engine", "android")
-    val ttsVoice = pref("tts_voice", "")
+    /** "gemini" (Gemini Live neural audio voice), "android" (device TTS), "google_cloud" or "openai" (any OpenAI-compatible /audio/speech API). */
+    val ttsEngine = pref("tts_engine", "gemini")
+    val ttsVoice = pref("tts_voice", "Charon")
     val ttsLanguage = pref("tts_language", "")
     val ttsRate = pref("tts_rate", 1.0f)
     val ttsPitch = pref("tts_pitch", 1.0f)
     val ttsApiKey = pref("tts_api_key", "")
     val ttsBaseUrl = pref("tts_base_url", "")
-    val ttsModel = pref("tts_model", "")
+    val ttsModel = pref("tts_model", "gemini-2.0-flash")
     /** Jarvis says short progress updates while it works. */
     val speakProgress = pref("speak_progress", false)
     /** Quiet mode: Jarvis shows its answers on the card instead of saying them (meetings, night). */
     val quietMode = pref("quiet_mode", false)
+    /** Bypass AudioFocus so background media like YouTube/Spotify never gets paused. */
+    val audioFocusBypass = pref("audio_focus_bypass", true)
 
     // ---- personality and the user's own notes (sent with the first message of every Jarvis chat)
     /**
