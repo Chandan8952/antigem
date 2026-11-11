@@ -410,10 +410,6 @@ object JarvisVoice {
     // ---- audio focus (other audio ducks while Jarvis talks)
 
     private fun requestFocus() {
-        if (JarvisPreferences.audioFocusBypass.value) {
-            // Audio focus bypassed: do not steal focus from YouTube or other media players
-            return
-        }
         val am = app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
         if (Build.VERSION.SDK_INT >= 26) {
             val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
@@ -423,6 +419,8 @@ object JarvisVoice {
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build()
                 )
+                .setWillPauseWhenDucked(false)
+                .setAcceptsDelayedFocusGain(false)
                 .build()
             focusRequest = req
             am.requestAudioFocus(req)
