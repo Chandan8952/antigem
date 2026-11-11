@@ -976,8 +976,8 @@ object JarvisController {
             if (it == "auto") when (JarvisPreferences.agentKind) {
                 AgentKind.CLAUDE -> "claude"
                 AgentKind.AGY -> "agy"
-                // OpenCode has no speech-to-text of its own
-                else -> "android"
+                // OpenCode has no speech-to-text of its own; fallback to AGY neural STT
+                else -> "agy"
             } else it
         }
         return when (chosen) {

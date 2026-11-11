@@ -98,8 +98,8 @@ object JarvisPreferences {
 
     // ---- voice input
     /** "auto" (the Jarvis agent's own dictation), "claude", "agy" or "android". */
-    val sttEngine = pref("stt_engine", "auto")
-    val sttLanguage = pref("stt_language", "en")
+    val sttEngine = pref("stt_engine", "agy")
+    val sttLanguage = pref("stt_language", "hi")
     /** How long a pause ends your sentence. */
     val silenceMs = pref("silence_ms", 1500)
     /** "push" (button only) or "phrase" (say the wake phrase while hands-free is on). */

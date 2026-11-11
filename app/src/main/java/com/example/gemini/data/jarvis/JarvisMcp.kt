@@ -1143,6 +1143,8 @@ object JarvisMcp {
             textS("jarvis_cancel_phrases", "Cancel phrases, separated by | (replaces the whole list; read it first and keep what the user did not ask to remove)", true,
                 { JarvisPhrases.parse(P.cancelPhrases.value).joinToString(" | ") }, { P.cancelPhrases.set(JarvisPhrases.format(JarvisPhrases.parse(it))) }),
             choice("jarvis_listen_after", "Open the mic after Jarvis speaks: auto (when it expects an answer), always, or never", true, listOf("auto", "always", "never"), { P.listenAfter.value }, { P.listenAfter.set(it) }),
+            choice("jarvis_stt_engine", "Speech recognition engine", true, listOf("auto", "agy", "claude", "android"), { P.sttEngine.value }, { P.sttEngine.set(it) }),
+            textS("jarvis_stt_language", "Speech recognition language code (e.g. hi, en)", true, { P.sttLanguage.value }, { P.sttLanguage.set(it) }),
             int("jarvis_follow_up_seconds", "How long the mic waits for a reply after Jarvis spoke (no word at all closes it)", true, 2..30, { P.followUpSeconds.value }, { P.followUpSeconds.set(it) }),
             Setting("jarvis_persona", "Whom Jarvis speaks as (grammatical gender for itself, e.g. Hindi kar rahi / kar raha hoon)", "female|male|neutral|unset", true,
                 get = { P.persona.value.ifBlank { "unset" } },
